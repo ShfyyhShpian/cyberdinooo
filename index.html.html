@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyberpunk DinoVerb: Past Tense Challenge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+        
+        body {
+            background-color: #0a0a1a;
+            color: #00ffcc;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 400px;
+            border: 2px solid #00ffcc;
+            box-shadow: 0 0 20px #00ffcc, inset 0 0 20px rgba(0, 255, 204, 0.1);
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #startScreen, #questionScreen, #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(10, 10, 26, 0.9);
+            z-index: 10;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        #questionScreen {
+            display: none;
+        }
+        
+        #gameOverScreen {
+            display: none;
+        }
+        
+        h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #00ffcc;
+            color: #ff00ff;
+        }
+        
+        h2 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #00ffcc;
+        }
+        
+        p {
+            margin-bottom: 20px;
+            line-height: 1.5;
+            max-width: 80%;
+        }
+        
+        button {
+            background-color: transparent;
+            color: #00ffcc;
+            border: 2px solid #00ffcc;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        button:hover {
+            background-color: #00ffcc;
+            color: #0a0a1a;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+        
+        #optionsContainer {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 90%;
+        }
+        
+        .option {
+            margin: 10px;
+            min-width: 200px;
+        }
+        
+        .option.selected {
+            background-color: #00ffcc;
+            color: #0a0a1a;
+        }
+        
+        #score {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 20px;
+            z-index: 5;
+            color: #ff00ff;
+            text-shadow: 0 0 5px #ff00ff;
+        }
+        
+        #lives {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            z-index: 5;
+            color: #ff00ff;
+            text-shadow: 0 0 5px #ff00ff;
+        }
+        
+        #questionText {
+            font-size: 22px;
+            margin-bottom: 30px;
+            color: #ff00ff;
+        }
+        
+        #justification {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #00ccff;
+            max-width: 80%;
+            background-color: rgba(0, 204, 255, 0.1);
+            padding: 10px;
+            border-left: 3px solid #00ccff;
+        }
+        
+        .neon-text {
+            text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff, 0 0 15px #ff00ff;
+        }
+        
+        .cyber-dino {
+            width: 60px;
+            height: 80px;
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            z-index: 2;
+        }
+        
+        .obstacle {
+            position: absolute;
+            bottom: 50px;
+            width: 30px;
+            z-index: 1;
+        }
+        
+        .ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 50px;
+            background: linear-gradient(to top, #1a1a3a, #0a0a1a);
+            z-index: 1;
+        }
+        
+        .cyber-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 204, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 204, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 0;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 14px;
+            color: #00ffcc;
+            z-index: 5;
+        }
+        
+        .dino-jumping {
+            animation: dinoJump 0.5s ease-in-out;
+        }
+        
+        @keyframes dinoJump {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-80px); }
+            100% { transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Audio elements for sound effects -->
+    <audio id="jumpSound" src="sounds/jump.mp3" preload="auto"></audio>
+    <audio id="scoreSound" src="sounds/jump.mp3" preload="auto"></audio>
+    <audio id="gameOverSound" src="sounds/gameover.mp3" preload="auto"></audio>
+    <audio id="correctSound" src="sounds/correct.mp3" preload="auto"></audio>
+    <audio id="wrongSound" src="sounds/wrong.mp3" preload="auto"></audio>
+    <audio id="backgroundSound" src="sounds/background.mp3" preload="auto" loop></audio>
+    
+    <div id="gameContainer">
+        <div class="cyber-grid"></div>
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="startScreen">
+            <h1 class="neon-text">CYBERPUNK DINO VERB</h1>
+            <p>Help the cyber-dino navigate through the digital wasteland by answering past tense verb questions correctly!</p>
+            <p>Press UP ARROW to jump over obstacles. Answer correctly to earn points and advance.</p>
+            <p>You have 3 lives. Questions appear after every 3 obstacles.</p>
+            <p>If the dino hits a cactus, it's game over!</p>
+            <button id="startButton">START GAME</button>
+        </div>
+        
+        <div id="questionScreen">
+            <h2>VERB CHALLENGE</h2>
+            <p id="questionText"></p>
+            <div id="optionsContainer">
+                <!-- Options will be generated here -->
+            </div>
+            <div id="justification"></div>
+        </div>
+        
+        <div id="gameOverScreen">
+            <h1 class="neon-text">GAME OVER</h1>
+            <p id="finalScore"></p>
+            <p id="completionMessage"></p>
+            <button id="restartButton">PLAY AGAIN</button>
+        </div>
+        
+        <div id="score">SCORE: 0</div>
+        <div id="lives">LIVES: 3</div>
+        <div class="controls">UP ARROW: Jump | ENTER: Select Answer</div>
+    </div>
+
+    <script>
+        // Game variables
+        let canvas, ctx;
+        let dino = {
+            x: 50,
+            y: 0,
+            width: 60,
+            height: 80,
+            velocityY: 0,
+            jumpPower: 15,
+            grounded: false,
+            color: '#00ffcc',
+            jumping: false
+        };
+        
+        let obstacles = [];
+        let gameSpeed = 5;
+        let score = 0;
+        let lives = 3;
+        let gameStarted = false;
+        let gameOver = false;
+        let gravity = 0.8;
+        let obstacleCounter = 0;
+        let questionsPerObstacle = 3;
+        let lastObstacleTime = 0;
+        let minObstacleGap = 1200; // Minimum time between obstacles in milliseconds
+        let usedQuestionIndices = new Set();
+        let showingQuestion = false;
+        
+        // Sound effects
+        const sounds = {
+            jump: document.getElementById('jumpSound'),
+            score: document.getElementById('scoreSound'),
+            gameOver: document.getElementById('gameOverSound'),
+            correct: document.getElementById('correctSound'),
+            wrong: document.getElementById('wrongSound'),
+            background: document.getElementById('backgroundSound')
+        };
+
+        // Set volume levels
+        sounds.jump.volume = 0.3;
+        sounds.score.volume = 0.5;
+        sounds.gameOver.volume = 0.7;
+        sounds.correct.volume = 0.5;
+        sounds.wrong.volume = 0.5;
+        sounds.background.volume = 0.3;
+        
+        // Questions data
+        const questions = [
+            {
+                sentence: "Ali ____ (go) to the market yesterday.",
+                options: ["goed", "went", "goeid", "goes"],
+                correct: 1,
+                justification: "'Went' is the correct irregular past tense form of 'go'. 'Goed' and 'goeid' are not valid past tense forms, and 'goes' is the present tense."
+            },
+            {
+                sentence: "She ____ (eat) a delicious pizza for dinner.",
+                options: ["eated", "ate", "eaten", "eating"],
+                correct: 1,
+                justification: "'Ate' is the correct irregular past tense form of 'eat'. 'Eated' is not correct, 'eaten' is the past participle, and 'eating' is the present participle."
+            },
+            {
+                sentence: "They ____ (run) in the park this morning.",
+                options: ["runned", "ran", "run", "running"],
+                correct: 1,
+                justification: "'Ran' is the correct irregular past tense form of 'run'. 'Runned' is not a word, 'run' is the base form, and 'running' is the present participle."
+            },
+            {
+                sentence: "We ____ (walk) to school every day last week.",
+                options: ["walked", "walk", "wolk", "walken"],
+                correct: 0,
+                justification: "'Walked' is the correct regular past tense form of 'walk'. Regular verbs form their past tense by adding '-ed' to the base form."
+            },
+            {
+                sentence: "I ____ (see) a beautiful sunset yesterday.",
+                options: ["seeed", "saw", "seen", "seeing"],
+                correct: 1,
+                justification: "'Saw' is the correct irregular past tense form of 'see'. 'Seeed' is not a word, 'seen' is the past participle, and 'seeing' is the present participle."
+            },
+            {
+                sentence: "He ____ (talk) to his friend for an hour.",
+                options: ["talk", "tolk", "talked", "talking"],
+                correct: 2,
+                justification: "'Talked' is the correct regular past tense form of 'talk'. Regular verbs simply add '-ed' to form the past tense."
+            },
+            {
+                sentence: "The birds ____ (sing) beautifully this morning.",
+                options: ["sang", "sung", "singed", "sing"],
+                correct: 0,
+                justification: "'Sang' is the correct irregular past tense form of 'sing'. 'Sung' is the past participle, 'singed' means to burn slightly, and 'sing' is the base form."
+            },
+            {
+                sentence: "The children ____ (play) in the garden all afternoon.",
+                options: ["play", "played", "plaid", "ploy"],
+                correct: 1,
+                justification: "'Played' is the correct regular past tense form of 'play'. Regular verbs follow the pattern of adding '-ed' for past tense."
+            },
+            {
+                sentence: "She ____ (take) the bus to work yesterday.",
+                options: ["tooked", "taken", "took", "taking"],
+                correct: 2,
+                justification: "'Took' is the correct irregular past tense form of 'take'. 'Tooked' is not a word, 'taken' is the past participle, and 'taking' is the present participle."
+            },
+            {
+                sentence: "The cat ____ (jump) onto the table.",
+                options: ["jump", "jamped", "jumped", "jumping"],
+                correct: 2,
+                justification: "'Jumped' is the correct regular past tense form of 'jump'. It follows the standard pattern of adding '-ed' for regular verbs."
+            },
+            {
+                sentence: "He ____ (write) a letter to his grandmother.",
+                options: ["writed", "wrote", "written", "writing"],
+                correct: 1,
+                justification: "'Wrote' is the correct irregular past tense form of 'write'. 'Writed' is not correct, 'written' is the past participle, and 'writing' is the present participle."
+            },
+            {
+                sentence: "She ____ (help) her mother with the cooking.",
+                options: ["help", "holp", "helped", "helpt"],
+                correct: 2,
+                justification: "'Helped' is the correct regular past tense form of 'help'. It's a regular verb that follows the standard '-ed' pattern."
+            },
+            {
+                sentence: "I ____ (think) about what you said.",
+                options: ["thinked", "thought", "thunk", "think"],
+                correct: 1,
+                justification: "'Thought' is the correct irregular past tense form of 'think'. 'Thinked' is not correct, 'thunk' is informal/colloquial, and 'think' is the base form."
+            },
+            {
+                sentence: "They ____ (clean) the entire house before the guests arrived.",
+                options: ["clean", "cleaned", "clane", "cleant"],
+                correct: 1,
+                justification: "'Cleaned' is the correct regular past tense form of 'clean'. Regular verbs add '-ed' to form their past tense."
+            },
+            {
+                sentence: "He ____ (bring) his favorite book to class.",
+                options: ["bringed", "brought", "brang", "bring"],
+                correct: 1,
+                justification: "'Brought' is the correct irregular past tense form of 'bring'. 'Bringed' is not correct, 'brang' is non-standard, and 'bring' is the base form."
+            }
+        ];
+        
+        let currentQuestionIndex = 0;
+        let selectedOptionIndex = 0;
+        
+        // Initialize game
+        function init() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            canvas.width = 800;
+            canvas.height = 400;
+            
+            dino.y = canvas.height - dino.height - 50; // Ground level
+            
+            // Event listeners
+            document.getElementById('startButton').addEventListener('click', startGame);
+            document.getElementById('restartButton').addEventListener('click', restartGame);
+            document.addEventListener('keydown', handleKeyPress);
+            
+            // Draw initial screen
+            draw();
+        }
+        
+        // Start the game
+        function startGame() {
+            document.getElementById('startScreen').style.display = 'none';
+            gameStarted = true;
+            gameOver = false;
+            showingQuestion = false;
+            score = 0;
+            lives = 3;
+            obstacleCounter = 0;
+            usedQuestionIndices.clear();
+            obstacles = [];
+            gameSpeed = 5;
+            updateScore();
+            updateLives();
+            
+            // Start background music
+            sounds.background.currentTime = 0;
+            sounds.background.play();
+            
+            // Start game loop
+            gameLoop();
+        }
+        
+        // Restart the game
+        function restartGame() {
+            document.getElementById('gameOverScreen').style.display = 'none';
+            startGame();
+        }
+        
+        // Main game loop
+        function gameLoop() {
+            if (!gameStarted || gameOver) return;
+            
+            update();
+            draw();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Update game state
+        function update() {
+            // Apply gravity to dino
+            if (!dino.grounded) {
+                dino.velocityY += gravity;
+                dino.y += dino.velocityY;
+                
+                // Check if dino hits the ground
+                if (dino.y >= canvas.height - dino.height - 50) {
+                    dino.y = canvas.height - dino.height - 50;
+                    dino.velocityY = 0;
+                    dino.grounded = true;
+                    dino.jumping = false;
+                }
+            }
+            
+            // Only generate obstacles if not showing a question
+            if (!showingQuestion) {
+                const currentTime = Date.now();
+                if (currentTime - lastObstacleTime > minObstacleGap && Math.random() < 0.02 && obstacles.length < 2) {
+                    generateObstacle();
+                    lastObstacleTime = currentTime;
+                }
+            }
+            
+            // Update obstacles
+            for (let i = 0; i < obstacles.length; i++) {
+                obstacles[i].x -= gameSpeed;
+                
+                // Check for collision - GAME OVER if dino hits cactus
+                if (checkCollision(dino, obstacles[i])) {
+                    endGame();
+                    return;
+                }
+                
+                // Remove obstacles that are off screen
+                if (obstacles[i].x + obstacles[i].width < 0) {
+                    obstacles.splice(i, 1);
+                    i--;
+                    score += 10;
+                    obstacleCounter++;
+                    updateScore();
+                    sounds.score.play(); // Play score sound
+                    
+                    // Show question after every few obstacles
+                    if (obstacleCounter % questionsPerObstacle === 0) {
+                        showQuestion();
+                    }
+                    
+                    // Increase game speed every 100 points
+                    if (score % 100 === 0) {
+                        gameSpeed += 0.5;
+                    }
+                }
+            }
+        }
+        
+        // Draw everything
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw cyber grid background
+            drawCyberGrid();
+            
+            // Draw ground
+            ctx.fillStyle = '#1a1a3a';
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+            
+            // Draw neon ground line
+            ctx.strokeStyle = '#00ffcc';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height - 50);
+            ctx.lineTo(canvas.width, canvas.height - 50);
+            ctx.stroke();
+            
+            // Draw dino
+            drawDino();
+            
+            // Draw obstacles
+            for (let obstacle of obstacles) {
+                drawObstacle(obstacle);
+            }
+            
+            // Draw score and lives
+            ctx.fillStyle = '#ff00ff';
+            ctx.font = '20px Courier New';
+            ctx.fillText('SCORE: ' + score, canvas.width - 150, 30);
+            ctx.fillText('LIVES: ' + lives, 20, 30);
+        }
+        
+        // Draw cyber grid background
+        function drawCyberGrid() {
+            ctx.strokeStyle = 'rgba(0, 255, 204, 0.1)';
+            ctx.lineWidth = 1;
+            
+            // Vertical lines
+            for (let x = 0; x < canvas.width; x += 50) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Horizontal lines
+            for (let y = 0; y < canvas.height; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+        
+        // Draw a pixelated dinosaur made of squares and rectangles
+        function drawDino() {
+            // Set dino color
+            ctx.fillStyle = dino.color;
+            
+            // Body (main rectangle)
+            ctx.fillRect(dino.x + 15, dino.y + 30, 30, 30);
+            
+            // Neck
+            ctx.fillRect(dino.x + 40, dino.y + 20, 10, 15);
+            
+            // Head
+            ctx.fillRect(dino.x + 45, dino.y + 10, 20, 15);
+            
+            // Snout
+            ctx.fillRect(dino.x + 60, dino.y + 15, 10, 8);
+            
+            // Tail
+            ctx.fillRect(dino.x + 5, dino.y + 35, 10, 5);
+            ctx.fillRect(dino.x, dino.y + 40, 10, 5);
+            
+            // Back leg (upper part)
+            ctx.fillRect(dino.x + 15, dino.y + 55, 8, 15);
+            // Back leg (lower part)
+            ctx.fillRect(dino.x + 10, dino.y + 65, 8, 5);
+            
+            // Front leg (upper part)
+            ctx.fillRect(dino.x + 35, dino.y + 55, 8, 15);
+            // Front leg (lower part)
+            ctx.fillRect(dino.x + 30, dino.y + 65, 8, 5);
+            
+            // Eye (pixel eye)
+            ctx.fillStyle = '#ff00ff';
+            ctx.fillRect(dino.x + 55, dino.y + 15, 4, 4);
+            
+            // Spikes on back
+            ctx.fillStyle = dino.color;
+            for (let i = 0; i < 4; i++) {
+                ctx.fillRect(dino.x + 20 + (i * 8), dino.y + 20, 4, 10);
+            }
+            
+            // Neon outline for the entire dino
+            ctx.strokeStyle = '#00ffcc';
+            ctx.lineWidth = 2;
+            
+            // Outline body
+            ctx.strokeRect(dino.x + 15, dino.y + 30, 30, 30);
+            
+            // Outline neck
+            ctx.strokeRect(dino.x + 40, dino.y + 20, 10, 15);
+            
+            // Outline head
+            ctx.strokeRect(dino.x + 45, dino.y + 10, 20, 15);
+            
+            // Outline snout
+            ctx.strokeRect(dino.x + 60, dino.y + 15, 10, 8);
+            
+            // Outline tail
+            ctx.strokeRect(dino.x + 5, dino.y + 35, 10, 5);
+            ctx.strokeRect(dino.x, dino.y + 40, 10, 5);
+            
+            // Outline legs
+            ctx.strokeRect(dino.x + 15, dino.y + 55, 8, 15);
+            ctx.strokeRect(dino.x + 10, dino.y + 65, 8, 5);
+            ctx.strokeRect(dino.x + 35, dino.y + 55, 8, 15);
+            ctx.strokeRect(dino.x + 30, dino.y + 65, 8, 5);
+            
+            // Outline spikes
+            for (let i = 0; i < 4; i++) {
+                ctx.strokeRect(dino.x + 20 + (i * 8), dino.y + 20, 4, 10);
+            }
+        }
+        
+        // Draw shorter cactus obstacles
+        function drawObstacle(obstacle) {
+            // Cactus body (shorter - max 50px tall)
+            ctx.fillStyle = obstacle.color;
+            
+            // Main stem
+            ctx.fillRect(obstacle.x + 10, obstacle.y, 10, obstacle.height);
+            
+            // Side arms (only if cactus is tall enough)
+            if (obstacle.height > 30) {
+                ctx.fillRect(obstacle.x, obstacle.y + 15, 10, 8);
+                ctx.fillRect(obstacle.x + 20, obstacle.y + 25, 10, 8);
+            }
+            
+            // Neon outline
+            ctx.strokeStyle = '#ff00ff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(obstacle.x + 10, obstacle.y, 10, obstacle.height);
+        }
+        
+        // Generate a new obstacle with proper height (shorter)
+        function generateObstacle() {
+            const height = 30 + Math.random() * 20; // Shorter cacti (30-50px tall)
+            const obstacle = {
+                x: canvas.width,
+                y: canvas.height - height - 50,
+                width: 30,
+                height: height,
+                color: '#ff00ff'
+            };
+            
+            obstacles.push(obstacle);
+        }
+        
+        // Check collision between dino and obstacle
+        function checkCollision(dino, obstacle) {
+            return dino.x + 10 < obstacle.x + obstacle.width &&
+                   dino.x + dino.width > obstacle.x + 10 &&
+                   dino.y < obstacle.y + obstacle.height &&
+                   dino.y + dino.height > obstacle.y;
+        }
+        
+        // Handle key presses
+        function handleKeyPress(e) {
+            if ((e.code === 'ArrowUp' || e.code === 'Space') && !showingQuestion) {
+                if (!gameStarted) {
+                    startGame();
+                } else if (dino.grounded && !gameOver) {
+                    dino.velocityY = -dino.jumpPower;
+                    dino.grounded = false;
+                    dino.jumping = true;
+                    sounds.jump.play(); // Play jump sound
+                }
+                e.preventDefault();
+            }
+            
+            // Handle question screen navigation
+            if (showingQuestion) {
+                if (e.code === 'ArrowUp') {
+                    selectedOptionIndex = (selectedOptionIndex - 1 + 4) % 4;
+                    updateOptionSelection();
+                    e.preventDefault();
+                } else if (e.code === 'ArrowDown') {
+                    selectedOptionIndex = (selectedOptionIndex + 1) % 4;
+                    updateOptionSelection();
+                    e.preventDefault();
+                } else if (e.code === 'Enter') {
+                    checkAnswer(selectedOptionIndex);
+                    e.preventDefault();
+                }
+            }
+        }
+        
+        // Show question screen with a unique question
+        function showQuestion() {
+            gameStarted = false;
+            showingQuestion = true;
+            
+            // Pause background music during questions
+            sounds.background.pause();
+            
+            // Get a unique question
+            let questionIndex;
+            do {
+                questionIndex = Math.floor(Math.random() * questions.length);
+            } while (usedQuestionIndices.has(questionIndex) && usedQuestionIndices.size < questions.length);
+            
+            usedQuestionIndices.add(questionIndex);
+            const question = questions[questionIndex];
+            
+            document.getElementById('questionText').textContent = question.sentence;
+            
+            const optionsContainer = document.getElementById('optionsContainer');
+            optionsContainer.innerHTML = '';
+            
+            question.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.classList.add('option');
+                button.addEventListener('click', () => checkAnswer(index));
+                if (index === 0) {
+                    button.classList.add('selected');
+                }
+                optionsContainer.appendChild(button);
+            });
+            
+            selectedOptionIndex = 0;
+            updateOptionSelection();
+            document.getElementById('justification').textContent = '';
+            document.getElementById('questionScreen').style.display = 'flex';
+        }
+        
+        // Update the selected option visually
+        function updateOptionSelection() {
+            const options = document.querySelectorAll('.option');
+            options.forEach((option, index) => {
+                if (index === selectedOptionIndex) {
+                    option.classList.add('selected');
+                } else {
+                    option.classList.remove('selected');
+                }
+            });
+        }
+        
+        // Check if the answer is correct
+        function checkAnswer(selectedIndex) {
+            const questionIndex = Array.from(usedQuestionIndices).pop();
+            const question = questions[questionIndex];
+            const justificationElement = document.getElementById('justification');
+            
+            if (selectedIndex === question.correct) {
+                justificationElement.textContent = "✓ Correct! " + question.justification;
+                justificationElement.style.color = '#00ff00';
+                score += 20;
+                updateScore();
+                sounds.correct.play(); // Play correct answer sound
+                
+                // Continue game after a short delay
+                setTimeout(() => {
+                    document.getElementById('questionScreen').style.display = 'none';
+                    showingQuestion = false;
+                    gameStarted = true;
+                    // Resume background music
+                    sounds.background.play();
+                    gameLoop();
+                }, 2000);
+            } else {
+                justificationElement.textContent = "✗ Incorrect. " + question.justification;
+                justificationElement.style.color = '#ff0000';
+                lives--;
+                updateLives();
+                sounds.wrong.play(); // Play wrong answer sound
+                
+                if (lives <= 0) {
+                    // Game over after losing all lives
+                    setTimeout(() => {
+                        endGame();
+                    }, 2000);
+                } else {
+                    // Continue with one less life
+                    setTimeout(() => {
+                        document.getElementById('questionScreen').style.display = 'none';
+                        showingQuestion = false;
+                        gameStarted = true;
+                        // Resume background music
+                        sounds.background.play();
+                        gameLoop();
+                    }, 2000);
+                }
+            }
+        }
+        
+        // Update score display
+        function updateScore() {
+            document.getElementById('score').textContent = 'SCORE: ' + score;
+        }
+        
+        // Update lives display
+        function updateLives() {
+            document.getElementById('lives').textContent = 'LIVES: ' + lives;
+        }
+        
+        // End the game
+        function endGame() {
+            gameOver = true;
+            showingQuestion = false;
+            document.getElementById('questionScreen').style.display = 'none';
+            document.getElementById('finalScore').textContent = 'Your Score: ' + score;
+            
+            // Stop background music and play game over sound
+            sounds.background.pause();
+            sounds.gameOver.play();
+            
+            let completionMessage = '';
+            const questionsAnswered = usedQuestionIndices.size;
+            
+            if (questionsAnswered >= questions.length) {
+                completionMessage = 'Amazing! You answered all the verb challenges!';
+            } else if (questionsAnswered >= questions.length / 2) {
+                completionMessage = 'Good job! You answered more than half of the challenges.';
+            } else {
+                completionMessage = 'Keep practicing! You can do better next time.';
+            }
+            
+            document.getElementById('completionMessage').textContent = completionMessage;
+            document.getElementById('gameOverScreen').style.display = 'flex';
+        }
+        
+        // Initialize the game when the page loads
+        window.onload = init;
+    </script>
+</body>
+</html>
